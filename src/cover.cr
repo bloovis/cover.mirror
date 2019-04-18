@@ -7,25 +7,28 @@ require "option_parser"
 require "yaml"
 
 class Config
-  include YAML::Serializable
+  getter providers : Array(String)
+  getter port : Int32
+  getter db : String
+  getter sslport : (Int32|Nil)
+  getter key : (String|Nil)
+  getter cert : (String|Nil)
 
-  @[YAML::Field(key: "providers")]
-  property providers : Array(String)
+  def initialize(config_file : String)
+    yaml = File.open(config_file) {|file| YAML.parse(file) }
 
-  @[YAML::Field(key: "port")]
-  property port : Int32
+    # providers, db, and port are required.
+    @providers = yaml["providers"].as_a.map { |name| name.as_s }
+    @db = yaml["db"].as_s
+    @port = yaml["port"].as_i
 
-  @[YAML::Field(key: "sslport")]
-  property sslport : Int32
-
-  @[YAML::Field(key: "db")]
-  property db : String
-
-  @[YAML::Field(key: "key")]
-  property key : String
-
-  @[YAML::Field(key: "cert")]
-  property cert : String
+    # sslport, key, and cert are optional.
+    if yaml["sslport"]?
+      @sslport = yaml["sslport"].as_i
+      @key = yaml["key"].as_s
+      @cert = yaml["cert"].as_s
+    end
+  end
 end
 
 class Provider
@@ -281,6 +284,13 @@ class Server
     if @server
       address = @server.bind_tcp "0.0.0.0", @config.port
       puts "Listening on http://#{address}"
+      if @config.sslport
+	ssl_context = OpenSSL::SSL::Context::Server.new
+	ssl_context.certificate_chain = @config.cert || ""
+	ssl_context.private_key = @config.key || ""
+	@server.bind_tls "0.0.0.0", @config.sslport || 0, ssl_context
+	puts "Listening on SSL port #{@config.sslport}"
+      end
       @server.listen
     end
   end
@@ -313,7 +323,7 @@ BANNER
 
   # Read config file
   puts "Using config file " + config_file
-  config = File.open(config_file) { |file| Config.from_yaml(file) }
+  config = Config.new(config_file);
 
   if ARGV.size < 1
     puts banner
