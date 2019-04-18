@@ -1,0 +1,6 @@
+---
+providers:
+  - gb
+  - ol
+db: ./cover.sqlite3
+port: 8090

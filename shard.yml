@@ -1,0 +1,17 @@
+name: cover
+version: 0.1.0
+
+authors:
+  - Mark Alexander <marka@pobox.com>
+
+targets:
+  cover:
+    main: src/cover.cr
+
+crystal: 0.27.2
+
+license: MIT
+
+dependencies:
+  sqlite3:
+    github: crystal-lang/crystal-sqlite3
