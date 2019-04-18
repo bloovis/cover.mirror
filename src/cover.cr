@@ -6,6 +6,28 @@ require "sqlite3"
 require "option_parser"
 require "yaml"
 
+class Config
+  include YAML::Serializable
+
+  @[YAML::Field(key: "providers")]
+  property providers : Array(String)
+
+  @[YAML::Field(key: "port")]
+  property port : Int32
+
+  @[YAML::Field(key: "sslport")]
+  property sslport : Int32
+
+  @[YAML::Field(key: "db")]
+  property db : String
+
+  @[YAML::Field(key: "key")]
+  property key : String
+
+  @[YAML::Field(key: "cert")]
+  property cert : String
+end
+
 class Provider
   def initialize(server : String,	# API server's base URL
 		 prefix : String,	# prefix for query URL
@@ -133,15 +155,15 @@ class OpenLibrary < Provider
 end
 
 class Fetcher
-  def initialize(provider_names : Array(String), db : String)
-    @provider_names = provider_names
+  def initialize(config : Config)
+    @config = config
     @providers = {} of String => Provider
-    @provider_names.each do |name|
+    config.providers.each do |name|
       case name
       when "gb"
-        @providers[name] = GoogleBooks.new(db)
+        @providers[name] = GoogleBooks.new(@config.db)
       when "ol"
-        @providers[name] = OpenLibrary.new(db)
+        @providers[name] = OpenLibrary.new(@config.db)
       end
     end
   end
@@ -151,7 +173,7 @@ class Fetcher
   # URL found.
   def get_image_url(isbn : String, provider_names : Array(String))
     if provider_names.size == 0
-      provider_names = @provider_names
+      provider_names = @config.providers
     end
     provider_names.each do |name|
       provider = @providers[name]?
@@ -196,9 +218,9 @@ class Fetcher
 end
 
 class Server
-  def initialize(port : Int32, provider_names : Array(String), db : String)
-    @port = port
-    @fetcher = Fetcher.new(provider_names, db)
+  def initialize(config : Config)
+    @config = config
+    @fetcher = Fetcher.new(config)
     @server = uninitialized HTTP::Server
   end
 
@@ -233,27 +255,31 @@ class Server
     end
   end
 
+  def process_request(context : HTTP::Server::Context)
+    path = context.request.path
+    puts "got path #{path}"
+    query = context.request.query
+    puts "got query #{query}"
+
+    case path
+    when "/cover"
+      get_covers(context)
+    when "/"
+      context.response.content_type = "text/plain"
+      context.response.print "Welcome to cover"
+    else
+      context.response.content_type = "text/plain"
+      context.response.print "Unrecognized request"
+    end
+  end
+
   def start
     @server = HTTP::Server.new do |context|
-      path = context.request.path
-      puts "got path #{path}"
-      query = context.request.query
-      puts "got query #{query}"
-
-      case path
-      when "/cover"
-        get_covers(context)
-      when "/"
-        context.response.content_type = "text/plain"
-	context.response.print "Welcome to cover"
-      else
-        context.response.content_type = "text/plain"
-	context.response.print "Unrecognized request"
-      end
+      process_request(context)
     end
 
     if @server
-      address = @server.bind_tcp "0.0.0.0", @port
+      address = @server.bind_tcp "0.0.0.0", @config.port
       puts "Listening on http://#{address}"
       @server.listen
     end
@@ -287,13 +313,7 @@ BANNER
 
   # Read config file
   puts "Using config file " + config_file
-  yaml = File.open(config_file) {|file| YAML.parse(file) }
-  port = yaml["port"].as_i
-  provider_names = [] of String
-  providers = yaml["providers"].as_a.each do |name|
-    provider_names << name.as_s
-  end
-  db = yaml["db"].as_s
+  config = File.open(config_file) { |file| Config.from_yaml(file) }
 
   if ARGV.size < 1
     puts banner
@@ -308,15 +328,15 @@ BANNER
       puts "Must specify at least one ISBN"
       return
     end
-    fetcher = Fetcher.new(provider_names, db)
-    json = fetcher.get_images_json(isbns, provider_names)
+    fetcher = Fetcher.new(config)
+    json = fetcher.get_images_json(isbns, config.providers)
     if json
       puts "JSON: #{json}"
     else
       puts "Unable to get JSON response for #{isbns}"
     end
   when "server"
-    server = Server.new(port, provider_names, db)
+    server = Server.new(config)
     server.start
     server.stop
   else
