@@ -5,6 +5,49 @@ require "db"
 require "sqlite3"
 require "option_parser"
 require "yaml"
+require "logger"
+
+class MyLogger
+  def initialize
+    @log = uninitialized Logger
+  end
+
+  def configure(config : Config)
+    levels = {
+      "DEBUG"   => Logger::DEBUG,
+      "ERROR"   => Logger::ERROR,
+      "FATAL"   => Logger::FATAL,
+      "INFO"    => Logger::INFO,
+      "UNKNOWN" => Logger::UNKNOWN,
+      "WARN"    => Logger::WARN
+    }
+
+    filename = config.log || ""
+    loglevel = config.loglevel || "DEBUG"
+    if filename.size > 0
+      file = File.open(filename, "a+")
+      @log = Logger.new(file)
+      @log.level = levels[loglevel.upcase]
+    else
+      @log = Logger.new(STDOUT)
+      @log.level = Logger::DEBUG
+    end
+  end
+
+  def debug(s : String)
+    @log.debug(s)
+  end
+
+  def error(s : String)
+    @log.error(s)
+  end
+
+  def close
+    @log.close
+  end
+end
+
+LOG = MyLogger.new
 
 class Config
   getter providers : Array(String)
@@ -13,6 +56,8 @@ class Config
   getter sslport : (Int32|Nil)
   getter key : (String|Nil)
   getter cert : (String|Nil)
+  getter log : (String|Nil)
+  getter loglevel : (String|Nil)
 
   def initialize(config_file : String)
     yaml = File.open(config_file) {|file| YAML.parse(file) }
@@ -27,6 +72,12 @@ class Config
       @sslport = yaml["sslport"].as_i
       @key = yaml["key"].as_s
       @cert = yaml["cert"].as_s
+    end
+
+    # log and loglevel are optional.
+    if yaml["log"]?
+      @log = yaml["log"].as_s
+      @loglevel = yaml["loglevel"].as_s
     end
   end
 end
@@ -73,21 +124,21 @@ class Provider
     url = nil
     if @db
       begin
-	puts "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
+	LOG.debug "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
 	sql = "select url from #{@table} where isbn = ? limit 1"
-	puts "Executing #{sql}"
+	LOG.debug "Executing #{sql}"
 	@db.query sql, isbn do |rs|
 	  rs.each do
 	    url = rs.read(String)	# FIXME: should save URLs in array
 	  end
 	end
 	if url
-	  puts "Got url for #{isbn} from sqlite3 query: #{url}"
+	  LOG.debug "Got url for #{isbn} from sqlite3 query: #{url}"
 	else
-	  puts "Unable to find #{isbn} in sqlite3"
+	  LOG.debug "Unable to find #{isbn} in sqlite3"
 	end
       rescue ex
-	puts "sqlite3 exception: #{ex.message}"
+	LOG.error "sqlite3 exception: #{ex.message}"
       end
     end
     return url
@@ -95,7 +146,7 @@ class Provider
 
   # Add an entry to the cache database
   def add_to_db(isbn : String, url : String)
-    puts "Adding db entry for #{isbn} => #{url}"
+    LOG.debug "Adding db entry for #{isbn} => #{url}"
     sql = "insert into #{@table} values (?, ?)"
     @db.exec sql, isbn, url
   end
@@ -104,38 +155,37 @@ class Provider
   def get_api(isbn : String)
     url = nil
     if @client
-      puts "Attempting to get URL for #{isbn} from #{@server}"
-      puts "trying #{@server}"
+      LOG.debug "Attempting to get URL for #{isbn} from #{@server}"
 
       # Get JSON and extract thumbnail URL.
       request = @prefix + isbn + @suffix
-      puts "Fetching #{@server}#{request}"
+      LOG.debug "Fetching #{@server}#{request}"
       response = @client.get(request)
       if response
 	json = response.body
-	puts "Response from #{@server}: ", json
+	LOG.debug "Response from #{@server}: #{json}"
 	if json =~ @regex
 	  url = $1.gsub("zoom=5", "zoom=1").
 		   gsub("\\u0026", "&").
 		   gsub("&edge=curl", "")
 	else
-	  puts "Unable to extract image URL from server's response"
+	  LOG.debug "Unable to extract image URL from server's response"
 	end
       else
-	puts "Unable to get book info for #{isbn} from #{@server}"
+	LOG.debug "Unable to get book info for #{isbn} from #{@server}"
       end
     end
     return url
   end
 
   def save_image(url : String, filename : String)
-    puts "Fetching image from #{url}"
+    LOG.debug "Fetching image from #{url}"
     jpeg = @client.get(url)
     f = File.open(filename, "wb")
     if f
       f.write(jpeg.body.to_slice)
     else
-      puts "Unable to create #{filename}"
+      LOG.debug "Unable to create #{filename}"
     end
     f.close
   end
@@ -214,7 +264,7 @@ class Fetcher
 	end
       end
     end
-    puts "JSON response: #{string}"
+    LOG.debug "JSON response: #{string}"
     return string
   end
 
@@ -243,10 +293,10 @@ class Server
       # FIXME: pass providers list to fetcher.
       json = @fetcher.get_images_json(isbns, provider_names)
       if json
-	puts "JSON: #{json}"
+	LOG.debug "get_covers: JSON = #{json}"
 	response = json
       else
-	puts "Unable to get JSON response for #{id}"
+	LOG.debug "get_covers: Unable to get JSON response for #{id}"
       end
     end
     if callback
@@ -260,9 +310,7 @@ class Server
 
   def process_request(context : HTTP::Server::Context)
     path = context.request.path
-    puts "got path #{path}"
-    query = context.request.query
-    puts "got query #{query}"
+    LOG.debug "process_request: got path #{path}"
 
     case path
     when "/cover"
@@ -283,20 +331,20 @@ class Server
 
     if @server
       address = @server.bind_tcp "0.0.0.0", @config.port
-      puts "Listening on http://#{address}"
+      LOG.debug "Listening on http://#{address}"
       if @config.sslport
 	ssl_context = OpenSSL::SSL::Context::Server.new
 	ssl_context.certificate_chain = @config.cert || ""
 	ssl_context.private_key = @config.key || ""
 	@server.bind_tls "0.0.0.0", @config.sslport || 0, ssl_context
-	puts "Listening on SSL port #{@config.sslport}"
+	LOG.debug "Listening on SSL port #{@config.sslport}"
       end
       @server.listen
     end
   end
 
   def stop
-    puts "Server::stop"
+    LOG.debug "Server::stop"
     if @server
       @server.close
     end
@@ -325,10 +373,14 @@ BANNER
   puts "Using config file " + config_file
   config = Config.new(config_file);
 
+  # Must have at least a command name.
   if ARGV.size < 1
     puts banner
     exit 1
   end
+
+  # Set up logging
+  LOG.configure(config)
 
   cmd = ARGV[0]
   case cmd

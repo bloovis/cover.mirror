@@ -9,3 +9,5 @@ port: 8090
 #sslport: 8453
 #key: /etc/letsencrypt/live/www.example.com/privkey.pem
 #cert: /etc/letsencrypt/live/www.example.com/fullchain.pem
+#log: ./cover.log
+#loglevel: debug
