@@ -114,6 +114,11 @@ class Provider
     @db = DB.open dbname
     @dbname = dbname
     @table = table
+
+    # Create the table if it does not already exist.
+    sql = "CREATE TABLE IF NOT EXISTS #{@table} (isbn varchar primary key not null, url varchar not null)"
+    LOG.debug "Executing #{sql}"
+    @db.exec sql
   end
 
   def finalize
