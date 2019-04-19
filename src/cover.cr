@@ -7,48 +7,6 @@ require "option_parser"
 require "yaml"
 require "logger"
 
-class MyLogger
-  def initialize
-    @log = uninitialized Logger
-  end
-
-  def configure(config : Config)
-    levels = {
-      "DEBUG"   => Logger::DEBUG,
-      "ERROR"   => Logger::ERROR,
-      "FATAL"   => Logger::FATAL,
-      "INFO"    => Logger::INFO,
-      "UNKNOWN" => Logger::UNKNOWN,
-      "WARN"    => Logger::WARN
-    }
-
-    filename = config.log || ""
-    loglevel = config.loglevel || "DEBUG"
-    if filename.size > 0
-      file = File.open(filename, "a+")
-      @log = Logger.new(file)
-      @log.level = levels[loglevel.upcase]
-    else
-      @log = Logger.new(STDOUT)
-      @log.level = Logger::DEBUG
-    end
-  end
-
-  def debug(s : String)
-    @log.debug(s)
-  end
-
-  def error(s : String)
-    @log.error(s)
-  end
-
-  def close
-    @log.close
-  end
-end
-
-LOG = MyLogger.new
-
 class Config
   getter providers : Array(String)
   getter port : Int32
@@ -77,10 +35,58 @@ class Config
     # log and loglevel are optional.
     if yaml["log"]?
       @log = yaml["log"].as_s
+    end
+    if yaml["loglevel"]?
       @loglevel = yaml["loglevel"].as_s
     end
   end
 end
+
+class MyLogger
+  def initialize
+    @log = uninitialized Logger
+  end
+
+  def configure(config : Config)
+    levels = {
+      "DEBUG"   => Logger::DEBUG,
+      "ERROR"   => Logger::ERROR,
+      "FATAL"   => Logger::FATAL,
+      "INFO"    => Logger::INFO,
+      "UNKNOWN" => Logger::UNKNOWN,
+      "WARN"    => Logger::WARN
+    }
+
+    filename = config.log || ""
+    loglevel = config.loglevel || "DEBUG"
+    if filename.size > 0
+      file = File.open(filename, "a+")
+      @log = Logger.new(file)
+    else
+      @log = Logger.new(STDOUT)
+    end
+    @log.level = levels[loglevel.upcase]
+  end
+
+  macro dolog(name)
+    def {{name}}(s : String)
+      @log.{{name}}(s)
+    end
+  end
+
+  dolog(debug)
+  dolog(error)
+  dolog(fatal)
+  dolog(info)
+  dolog(unknown)
+  dolog(warn)
+
+  def close
+    @log.close
+  end
+end
+
+LOG = MyLogger.new
 
 class Provider
   def initialize(server : String,	# API server's base URL
