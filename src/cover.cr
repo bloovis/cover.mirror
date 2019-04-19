@@ -137,12 +137,8 @@ class Provider
       begin
 	LOG.debug "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
 	sql = "select url from #{@table} where isbn = ? limit 1"
-	LOG.debug "Executing #{sql}"
-	@db.query sql, isbn do |rs|
-	  rs.each do
-	    url = rs.read(String)	# FIXME: should save URLs in array
-	  end
-	end
+	LOG.debug "Executing #{sql}, ? = #{isbn}"
+	url = @db.query_one?(sql, isbn, as: String)
 	if url
 	  LOG.debug "Got url for #{isbn} from sqlite3 query: #{url}"
 	else
