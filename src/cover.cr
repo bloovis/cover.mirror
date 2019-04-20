@@ -171,6 +171,7 @@ class Provider
       begin
         response = @client.get(request)
       rescue ex
+        LOG.error "Exception attempting to get #{@server}#{request}:"
         LOG.error ex.inspect_with_backtrace
       end
       if response
