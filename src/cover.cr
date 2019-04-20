@@ -154,7 +154,7 @@ class Provider
   # Add an entry to the cache database
   def add_to_db(isbn : String, url : String)
     LOG.debug "Adding db entry for #{isbn} => #{url}"
-    sql = "insert into #{@table} values (?, ?)"
+    sql = "replace into #{@table} values (?, ?)"
     @db.exec sql, isbn, url
   end
 
