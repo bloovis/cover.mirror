@@ -184,21 +184,6 @@ class Provider
     return url
   end
 
-  def save_image(url : String, filename : String)
-    LOG.debug "Fetching image from #{url}"
-    jpeg = HTTP::Client.get(url)
-    if jpeg
-      f = File.open(filename, "wb")
-      if f
-	f.write(jpeg.body.to_slice)
-      else
-	LOG.debug "Unable to create #{filename}"
-      end
-      f.close
-    else
-      LOG.debug "Unable to get jpeg #{url}"
-    end
-  end
 end
 
 class GoogleBooks < Provider
@@ -278,6 +263,32 @@ class Fetcher
     return string
   end
 
+  def save_image(isbn : String, filename : String)
+    if File.exists?(filename)
+      puts "#{filename} exists; will not overwrite"
+      return false
+    end
+    url = get_image_url(isbn, [] of String)
+    if url
+      LOG.debug "Fetching image from #{url}"
+      jpeg = HTTP::Client.get(url)
+      if jpeg
+	f = File.open(filename, "wb")
+	if f
+	  f.write(jpeg.body.to_slice)
+	  puts "Image saved to #{filename}"
+	else
+	  puts "Unable to create #{filename}"
+	end
+	f.close
+      else
+	puts "Unable to get jpeg #{url}"
+      end
+    else
+      puts "Unable to determine cover URL for #{isbn}"
+    end
+    return true
+  end
 end
 
 class Server
@@ -365,10 +376,9 @@ def doit
   banner = <<-BANNER
 cover [options] command [IBSN...]
 commands:
-  test - test fetching of cover URLs
-  save - save a cover image
-  init - initialize sqlite3 cache
-  server - start cover cache server
+  test ISBN...            # test fetching of cover URLs
+  save ISBN imagefilename # save a cover image
+  server                  # start cover cache server
 BANNER
 
   config_file = "./cover.yml"
@@ -398,7 +408,7 @@ BANNER
     isbns = ARGV[1, ARGV.size - 1]
     if isbns.size == 0
       puts "Must specify at least one ISBN"
-      return
+      exit 1
     end
     fetcher = Fetcher.new(config)
     json = fetcher.get_images_json(isbns, config.providers)
@@ -411,6 +421,17 @@ BANNER
     server = Server.new(config)
     server.start
     server.stop
+  when "save"
+    if ARGV.size != 3
+      puts "Must specify an ISBN and an output filename"
+      exit 1
+    end
+    isbn = ARGV[1]
+    filename = ARGV[2]
+    fetcher = Fetcher.new(config)
+    if isbn && filename
+      fetcher.save_image(isbn, filename)
+    end
   else
     puts "Unrecognized command #{cmd}"
   end
