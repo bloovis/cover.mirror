@@ -167,7 +167,12 @@ class Provider
       # Get JSON and extract thumbnail URL.
       request = @prefix + isbn + @suffix
       LOG.debug "Fetching #{@server}#{request}"
-      response = @client.get(request)
+      response = nil
+      begin
+        response = @client.get(request)
+      rescue ex
+        LOG.error ex.inspect_with_backtrace
+      end
       if response
 	json = response.body
 	LOG.debug "Response from #{@server}: #{json}"
