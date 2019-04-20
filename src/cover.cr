@@ -95,14 +95,12 @@ class Provider
                  image_tag : String,	# JSON tag for image info
 		 dbname : String,	# sqlite3 database filename
 		 table : String)	# table name for this provider
-    # Set up the HTTP client for the API server.  Use this to fetch
-    # cover image URLs that aren't in the cache.
+    # Initialize information needed to setup the HTTP clients for the API server.
+    # Use this to fetch cover image URLs that aren't in the cache.
     @server = server
     @prefix = prefix
     @suffix = suffix
     @image_tag = image_tag
-    uri = URI.parse(@server)
-    @client = HTTP::Client.new(uri)
 
     # Initialize the regular expression used to extract the image
     # URL from the JSON response returned by the API server.
@@ -124,9 +122,6 @@ class Provider
   def finalize
     if @db
       @db.close
-    end
-    if @client
-      @client.close
     end
   end
 
@@ -161,46 +156,48 @@ class Provider
   # Try to get a single image URL from the book API provider.
   def get_api(isbn : String)
     url = nil
-    if @client
-      LOG.debug "Attempting to get URL for #{isbn} from #{@server}"
+    request = @server + @prefix + isbn + @suffix
+    response = nil
+    begin
+      LOG.debug "Fetching #{request}"
+      response = HTTP::Client.get(request)
+    rescue ex
+      LOG.error "Exception attempting to get #{request}"
+      LOG.error ex.inspect_with_backtrace
+      exit 1
+    end
 
-      # Get JSON and extract thumbnail URL.
-      request = @prefix + isbn + @suffix
-      LOG.debug "Fetching #{@server}#{request}"
-      response = nil
-      begin
-        response = @client.get(request)
-      rescue ex
-        LOG.error "Exception attempting to get #{@server}#{request}:"
-        LOG.error ex.inspect_with_backtrace
-      end
-      if response
-	json = response.body
-	LOG.debug "Response from #{@server}: #{json}"
-	if json =~ @regex
-	  url = $1.gsub("zoom=5", "zoom=1").
-		   gsub("\\u0026", "&").
-		   gsub("&edge=curl", "")
-	else
-	  LOG.debug "Unable to extract image URL from server's response"
-	end
+    # Get JSON and extract thumbnail URL.
+    if response
+      json = response.body
+      LOG.debug "Response from #{@server}: #{json}"
+      if json =~ @regex
+	url = $1.gsub("zoom=5", "zoom=1").
+		 gsub("\\u0026", "&").
+		 gsub("&edge=curl", "")
       else
-	LOG.debug "Unable to get book info for #{isbn} from #{@server}"
+	LOG.debug "Unable to extract image URL from server's response"
       end
+    else
+      LOG.debug "Unable to get book info for #{isbn} from #{@server}"
     end
     return url
   end
 
   def save_image(url : String, filename : String)
     LOG.debug "Fetching image from #{url}"
-    jpeg = @client.get(url)
-    f = File.open(filename, "wb")
-    if f
-      f.write(jpeg.body.to_slice)
+    jpeg = HTTP::Client.get(url)
+    if jpeg
+      f = File.open(filename, "wb")
+      if f
+	f.write(jpeg.body.to_slice)
+      else
+	LOG.debug "Unable to create #{filename}"
+      end
+      f.close
     else
-      LOG.debug "Unable to create #{filename}"
+      LOG.debug "Unable to get jpeg #{url}"
     end
-    f.close
   end
 end
 
@@ -344,13 +341,13 @@ class Server
 
     if @server
       address = @server.bind_tcp "0.0.0.0", @config.port
-      LOG.debug "Listening on http://#{address}"
+      puts "Listening on http://#{address}"
       if @config.sslport
 	ssl_context = OpenSSL::SSL::Context::Server.new
 	ssl_context.certificate_chain = @config.cert || ""
 	ssl_context.private_key = @config.key || ""
 	@server.bind_tls "0.0.0.0", @config.sslport || 0, ssl_context
-	LOG.debug "Listening on SSL port #{@config.sslport}"
+	puts "Listening on SSL port #{@config.sslport}"
       end
       @server.listen
     end
