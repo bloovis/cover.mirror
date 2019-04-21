@@ -1,0 +1,20 @@
+# To start cover as a system service, edit this file as necessary,
+# and copy it to /etc/systemd/system/cover.service .
+# Then run the following commands to start the cover service:
+#   systemctl enable cover
+#   systemctl systemctl daemon-reload
+#   systemctl start cover
+
+[Unit]
+Description = Cover cache for Koha
+After = network.target
+
+[Service]
+WorkingDirectory = /root/cover
+ExecStart = /root/cover/cover server
+RemainAfterExit=no
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
