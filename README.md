@@ -93,7 +93,19 @@ This should print something like this (with no newlines, and `...` replaced with
 
 To include OpenLibrary in the request, add `,ol` to the end of the request URL.
 
-### Server performance
+## System Service
+
+It is more convenient to start the Cover server as a system service than to run it
+from the command line.  To do this, follow these steps:
+
+* Copy the file `cover.service.sample` to `/etc/systemd/system/cover.service`
+  and edit it as necessary.  The values most likely to need editing are `WorkingDirectory`
+  and `ExecStart`.
+* Run `systemctl systemctl daemon-reload` to tell systemd about the new Cover service
+* Run `systemctl enable cover` to enable the Cover service
+* Run `systemctl start cover` to start the Cover service
+
+## Performance
 
 On a ThinkPad X201s (a first-generation Core i7 processor), I ran the command
 listed above under "Server testing", in order to get all four of the URLs into the cache.
