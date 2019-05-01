@@ -2,7 +2,7 @@
 # and copy it to /etc/systemd/system/cover.service .
 # Then run the following commands to start the cover service:
 #   systemctl enable cover
-#   systemctl systemctl daemon-reload
+#   systemctl daemon-reload
 #   systemctl start cover
 
 [Unit]

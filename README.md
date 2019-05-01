@@ -101,7 +101,7 @@ from the command line.  To do this, follow these steps:
 * Copy the file `cover.service.sample` to `/etc/systemd/system/cover.service`
   and edit it as necessary.  The values most likely to need editing are `WorkingDirectory`
   and `ExecStart`.
-* Run `systemctl systemctl daemon-reload` to tell systemd about the new Cover service
+* Run `systemctl daemon-reload` to tell systemd about the new Cover service
 * Run `systemctl enable cover` to enable the Cover service
 * Run `systemctl start cover` to start the Cover service
 
