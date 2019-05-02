@@ -42,10 +42,10 @@ class Config
   end
 end
 
-class MyLogger
-  def initialize
-    @log = uninitialized Logger
-  end
+module Log
+  extend self
+
+  @@log = uninitialized Logger
 
   def configure(config : Config)
     levels = {
@@ -61,32 +61,24 @@ class MyLogger
     loglevel = config.loglevel || "DEBUG"
     if filename.size > 0
       file = File.open(filename, "a+")
-      @log = Logger.new(file)
+      @@log = Logger.new(file)
     else
-      @log = Logger.new(STDOUT)
+      @@log = Logger.new(STDOUT)
     end
-    @log.level = levels[loglevel.upcase]
+    @@log.level = levels[loglevel.upcase]
   end
 
-  macro dolog(name)
-    def {{name}}(s : String)
-      @log.{{name}}(s)
-    end
-  end
-
-  dolog(debug)
-  dolog(error)
-  dolog(fatal)
-  dolog(info)
-  dolog(unknown)
-  dolog(warn)
+  delegate debug, to: @@log
+  delegate error, to: @@log
+  delegate fatal, to: @@log
+  delegate info, to: @@log
+  delegate unknown, to: @@log
+  delegate warn, to: @@log
 
   def close
     @log.close
   end
 end
-
-LOG = MyLogger.new
 
 class Provider
   def initialize(server : String,	# API server's base URL
@@ -115,7 +107,7 @@ class Provider
 
     # Create the table if it does not already exist.
     sql = "CREATE TABLE IF NOT EXISTS #{@table} (isbn varchar primary key not null, url varchar not null)"
-    LOG.debug "Executing #{sql}"
+    Log.debug "Executing #{sql}"
     @db.exec sql
   end
 
@@ -130,17 +122,17 @@ class Provider
     url = nil
     if @db
       begin
-	LOG.debug "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
+	Log.debug "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
 	sql = "select url from #{@table} where isbn = ? limit 1"
-	LOG.debug "Executing #{sql}, ? = #{isbn}"
+	Log.debug "Executing #{sql}, ? = #{isbn}"
 	url = @db.query_one?(sql, isbn, as: String)
 	if url
-	  LOG.debug "Got url for #{isbn} from sqlite3 query: #{url}"
+	  Log.debug "Got url for #{isbn} from sqlite3 query: #{url}"
 	else
-	  LOG.debug "Unable to find #{isbn} in sqlite3"
+	  Log.debug "Unable to find #{isbn} in sqlite3"
 	end
       rescue ex
-	LOG.error "sqlite3 exception: #{ex.message}"
+	Log.error "sqlite3 exception: #{ex.message}"
       end
     end
     return url
@@ -148,7 +140,7 @@ class Provider
 
   # Add an entry to the cache database
   def add_to_db(isbn : String, url : String)
-    LOG.debug "Adding db entry for #{isbn} => #{url}"
+    Log.debug "Adding db entry for #{isbn} => #{url}"
     sql = "replace into #{@table} values (?, ?)"
     @db.exec sql, isbn, url
   end
@@ -159,27 +151,27 @@ class Provider
     request = @server + @prefix + isbn + @suffix
     response = nil
     begin
-      LOG.debug "Fetching #{request}"
+      Log.debug "Fetching #{request}"
       response = HTTP::Client.get(request)
     rescue ex
-      LOG.error "Exception attempting to get #{request}"
-      LOG.error ex.inspect_with_backtrace
+      Log.error "Exception attempting to get #{request}"
+      Log.error ex.inspect_with_backtrace
       exit 1
     end
 
     # Get JSON and extract thumbnail URL.
     if response
       json = response.body
-      LOG.debug "Response from #{@server}: #{json}"
+      Log.debug "Response from #{@server}: #{json}"
       if json =~ @regex
 	url = $1.gsub("zoom=5", "zoom=1").
 		 gsub("\\u0026", "&").
 		 gsub("&edge=curl", "")
       else
-	LOG.debug "Unable to extract image URL from server's response"
+	Log.debug "Unable to extract image URL from server's response"
       end
     else
-      LOG.debug "Unable to get book info for #{isbn} from #{@server}"
+      Log.debug "Unable to get book info for #{isbn} from #{@server}"
     end
     return url
   end
@@ -259,7 +251,7 @@ class Fetcher
 	end
       end
     end
-    LOG.debug "JSON response: #{string}"
+    Log.debug "JSON response: #{string}"
     return string
   end
 
@@ -270,7 +262,7 @@ class Fetcher
     end
     url = get_image_url(isbn, [] of String)
     if url
-      LOG.debug "Fetching image from #{url}"
+      Log.debug "Fetching image from #{url}"
       jpeg = HTTP::Client.get(url)
       if jpeg
 	f = File.open(filename, "wb")
@@ -314,10 +306,10 @@ class Server
       # FIXME: pass providers list to fetcher.
       json = @fetcher.get_images_json(isbns, provider_names)
       if json
-	LOG.debug "get_covers: JSON = #{json}"
+	Log.debug "get_covers: JSON = #{json}"
 	response = json
       else
-	LOG.debug "get_covers: Unable to get JSON response for #{id}"
+	Log.debug "get_covers: Unable to get JSON response for #{id}"
       end
     end
     if callback
@@ -331,7 +323,7 @@ class Server
 
   def process_request(context : HTTP::Server::Context)
     path = context.request.path
-    LOG.debug "process_request: got path #{path}"
+    Log.debug "process_request: got path #{path}"
 
     case path
     when "/cover"
@@ -365,7 +357,7 @@ class Server
   end
 
   def stop
-    LOG.debug "Server::stop"
+    Log.debug "Server::stop"
     if @server
       @server.close
     end
@@ -400,7 +392,7 @@ BANNER
   end
 
   # Set up logging
-  LOG.configure(config)
+  Log.configure(config)
 
   cmd = ARGV[0]
   case cmd
