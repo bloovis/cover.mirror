@@ -105,6 +105,25 @@ from the command line.  To do this, follow these steps:
 * Run `systemctl enable cover` to enable the Cover service
 * Run `systemctl start cover` to start the Cover service
 
+## Daily Restart
+
+For some reason, the Cover server stops working after some amount of
+time (days, weeks? not sure), apparently after being unable to fetch a
+JSON response from Google Books.  The same problem occurred with coce,
+but coce would crash instead.  It may be that Google Books limits the
+number of covers that can be fetched by a single client in a certain
+time period, and refuses to serve any more covers after this limit has
+been reached.
+
+In any case, I have not been able to determine the exact source of the
+problem, so the workaround is to create a cron job that restarts Cover
+on a daily basis.  As root, use the command `crontab -e`, and when the
+editor comes up, add the following line to the bottom of the crontab:
+
+    0 5    *   *   *     /bin/systemctl restart cover
+
+This will restart Cover at 5 AM every day.
+
 ## Performance
 
 On a ThinkPad X201s (a first-generation Core i7 processor), I ran the command
