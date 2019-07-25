@@ -8,10 +8,19 @@ Unlike Coce, Cover does NOT support Amazon, because Amazon requires that images 
 I do not believe that is in a library's best interest to support, even in an indirect
 way, a malevolent corporation that is attempting to destroy libraries.
 
+## Prerequisites
+
+Cover requires C libraries for yaml and libsqlite3.  These can be installed on Debian
+using:
+
+    sudo apt install libyaml-dev
+    sudo apt install libsqlite3-dev
+
 ## Build
 
 To build Cover, use this:
 
+    shards install
     crystal build src/cover.cr
 
 This will create a binary `cover` in the current directory
@@ -123,6 +132,14 @@ editor comes up, add the following line to the bottom of the crontab:
     0 5    *   *   *     /bin/systemctl restart cover
 
 This will restart Cover at 5 AM every day.
+
+## Koha configuration
+
+In the Koha system preferences, change the following preferences:
+
+* *Coce*: Enable
+* *CoceHost*: `https://KOHAHOST:8453`, where `KOHAHOST` is the actually Koha host name.  Note there is no terminating slash on this URL.
+* *CoceProviders*: Google Books, Open Library
 
 ## Performance
 
