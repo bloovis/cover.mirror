@@ -113,6 +113,7 @@ from the command line.  To do this, follow these steps:
 * Run `systemctl daemon-reload` to tell systemd about the new Cover service
 * Run `systemctl enable cover` to enable the Cover service
 * Run `systemctl start cover` to start the Cover service
+* Run `systemctl status cover` to verify that the Cover service is running
 
 ## Daily Restart
 
@@ -138,7 +139,8 @@ This will restart Cover at 5 AM every day.
 In the Koha system preferences, change the following preferences:
 
 * *Coce*: Enable
-* *CoceHost*: `https://KOHAHOST:8453`, where `KOHAHOST` is the actually Koha host name.  Note there is no terminating slash on this URL.
+* *CoceHost*: If you are using https, set this to `https://KOHAHOST:8453`, where `KOHAHOST` is the actual Koha host name.  Note there is no terminating slash on this URL.
+  If you are *not* using https, set this to `http://KOHAHOST:8090`.
 * *CoceProviders*: Google Books, Open Library
 
 ## Performance
