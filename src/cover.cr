@@ -375,7 +375,7 @@ BANNER
 
   config_file = "./cover.yml"
 
-  OptionParser.parse! do |parser|
+  OptionParser.parse do |parser|
     parser.banner = banner
     parser.on("-c FILENAME", "--config=FILENAME",
               "Specifies the config filename") { |name| config_file = name }
