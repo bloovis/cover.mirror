@@ -42,7 +42,7 @@ class Config
   end
 end
 
-module Log
+module MyLog
   extend self
 
   @@log = uninitialized Logger
@@ -107,7 +107,7 @@ class Provider
 
     # Create the table if it does not already exist.
     sql = "CREATE TABLE IF NOT EXISTS #{@table} (isbn varchar primary key not null, url varchar not null)"
-    Log.debug "Executing #{sql}"
+    MyLog.debug "Executing #{sql}"
     @db.exec sql
   end
 
@@ -122,17 +122,17 @@ class Provider
     url = nil
     if @db
       begin
-	Log.debug "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
+	MyLog.debug "Attempting to get URL for #{isbn} from #{@dbname}:#{@table}"
 	sql = "select url from #{@table} where isbn = ? limit 1"
-	Log.debug "Executing #{sql}, ? = #{isbn}"
+	MyLog.debug "Executing #{sql}, ? = #{isbn}"
 	url = @db.query_one?(sql, isbn, as: String)
 	if url
-	  Log.debug "Got url for #{isbn} from sqlite3 query: #{url}"
+	  MyLog.debug "Got url for #{isbn} from sqlite3 query: #{url}"
 	else
-	  Log.debug "Unable to find #{isbn} in sqlite3"
+	  MyLog.debug "Unable to find #{isbn} in sqlite3"
 	end
       rescue ex
-	Log.error "sqlite3 exception: #{ex.message}"
+	MyLog.error "sqlite3 exception: #{ex.message}"
       end
     end
     return url
@@ -140,7 +140,7 @@ class Provider
 
   # Add an entry to the cache database
   def add_to_db(isbn : String, url : String)
-    Log.debug "Adding db entry for #{isbn} => #{url}"
+    MyLog.debug "Adding db entry for #{isbn} => #{url}"
     sql = "replace into #{@table} values (?, ?)"
     @db.exec sql, isbn, url
   end
@@ -151,27 +151,27 @@ class Provider
     request = @server + @prefix + isbn + @suffix
     response = nil
     begin
-      Log.debug "Fetching #{request}"
+      MyLog.debug "Fetching #{request}"
       response = HTTP::Client.get(request)
     rescue ex
-      Log.error "Exception attempting to get #{request}"
-      Log.error ex.inspect_with_backtrace
+      MyLog.error "Exception attempting to get #{request}"
+      MyLog.error ex.inspect_with_backtrace
       exit 1
     end
 
     # Get JSON and extract thumbnail URL.
     if response
       json = response.body
-      Log.debug "Response from #{@server}: #{json}"
+      MyLog.debug "Response from #{@server}: #{json}"
       if json =~ @regex
 	url = $1.gsub("zoom=5", "zoom=1").
 		 gsub("\\u0026", "&").
 		 gsub("&edge=curl", "")
       else
-	Log.debug "Unable to extract image URL from server's response"
+	MyLog.debug "Unable to extract image URL from server's response"
       end
     else
-      Log.debug "Unable to get book info for #{isbn} from #{@server}"
+      MyLog.debug "Unable to get book info for #{isbn} from #{@server}"
     end
     return url
   end
@@ -251,7 +251,7 @@ class Fetcher
 	end
       end
     end
-    Log.debug "JSON response: #{string}"
+    MyLog.debug "JSON response: #{string}"
     return string
   end
 
@@ -262,7 +262,7 @@ class Fetcher
     end
     url = get_image_url(isbn, [] of String)
     if url
-      Log.debug "Fetching image from #{url}"
+      MyLog.debug "Fetching image from #{url}"
       jpeg = HTTP::Client.get(url)
       if jpeg
 	f = File.open(filename, "wb")
@@ -306,10 +306,10 @@ class Server
       # FIXME: pass providers list to fetcher.
       json = @fetcher.get_images_json(isbns, provider_names)
       if json
-	Log.debug "get_covers: JSON = #{json}"
+	MyLog.debug "get_covers: JSON = #{json}"
 	response = json
       else
-	Log.debug "get_covers: Unable to get JSON response for #{id}"
+	MyLog.debug "get_covers: Unable to get JSON response for #{id}"
       end
     end
     if callback
@@ -323,7 +323,7 @@ class Server
 
   def process_request(context : HTTP::Server::Context)
     path = context.request.path
-    Log.debug "process_request: got path #{path}"
+    MyLog.debug "process_request: got path #{path}"
 
     case path
     when "/cover"
@@ -357,7 +357,7 @@ class Server
   end
 
   def stop
-    Log.debug "Server::stop"
+    MyLog.debug "Server::stop"
     if @server
       @server.close
     end
@@ -392,7 +392,7 @@ BANNER
   end
 
   # Set up logging
-  Log.configure(config)
+  MyLog.configure(config)
 
   cmd = ARGV[0]
   case cmd
