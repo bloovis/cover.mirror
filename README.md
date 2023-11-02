@@ -42,8 +42,12 @@ The configuration file contains these optional fields:
 
 * `sslport` - the number of the port to by used by the Cover server for SSL (https) access.
   The recommended number is 8453, to avoid conflict with Coce, which uses 8443.
-* `key` - the pathname of the file containing the SSL key.
-* `cert` - the pathname the file containing the SSL certificate.
+* `key` - the pathname of the file containing the SSL key.  For example,
+if you obtained your key from Let's Encrypt, the pathname
+might be something like `/etc/letsencrypt/live/www.example.com/privkey.pem`.
+* `cert` - the pathname of the file containing the SSL certificate.  For example,
+if you obtained your certificate from Let's Encrypt, the pathname
+might be something like `/etc/letsencrypt/live/www.example.com/fullchain.pem`.
 * `log` - the pathname of the log file.  Cover will create the file if it does not
   exist; otherwise, it will append message to the end of the file.  If this field
   is present, Cover will send log messages to stdout.
