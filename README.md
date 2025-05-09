@@ -49,8 +49,8 @@ might be something like `/etc/letsencrypt/live/www.example.com/privkey.pem`.
 if you obtained your certificate from Let's Encrypt, the pathname
 might be something like `/etc/letsencrypt/live/www.example.com/fullchain.pem`.
 * `log` - the pathname of the log file.  Cover will create the file if it does not
-  exist; otherwise, it will append message to the end of the file.  If this field
-  is present, Cover will send log messages to stdout.
+  exist; otherwise, it will append log messages to the end of the file.  If this field
+  is not present, Cover will send log messages to stdout.
 * `loglevel` - the logging level, corresponding to the values of `Logger::Severity `:
     - debug
     - error
