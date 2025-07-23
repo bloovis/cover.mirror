@@ -1,5 +1,8 @@
 # Cover
 
+(*Note*: If you are reading this on Github, you can find the
+original Fossil repository [here](https://www.bloovis.com/fossil/home/marka/fossils/cover/home)).
+
 Cover is a book cover URL cache server for the Koha ILS.  It is a rewrite
 in Crystal of [Coce](https://github.com/fredericd/coce), a similar program written in node.js.
 It supports reading image URLs from Google Books and OpenLibrary.
