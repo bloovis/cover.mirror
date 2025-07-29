@@ -24,7 +24,7 @@ using:
 To clone this repository:
 
 ```
-fossil clone https://chiselapp.com/user/bloovis/repository/beectl beectl.fossil
+fossil clone https://www.bloovis.com/fossil/home/marka/fossils/cover
 ```
 
 To build Cover, use this:
