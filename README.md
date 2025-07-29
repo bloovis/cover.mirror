@@ -21,10 +21,18 @@ using:
 
 ## Build
 
+To clone this repository:
+
+```
+fossil clone https://chiselapp.com/user/bloovis/repository/beectl beectl.fossil
+```
+
 To build Cover, use this:
 
-    shards install
-    crystal build src/cover.cr
+```
+shards install
+crystal build src/cover.cr
+```
 
 This will create a binary `cover` in the current directory
 
@@ -72,7 +80,9 @@ value is `cover.yml`.
 
 To test URL fetching without running the server, use this:
 
-    ./cover [config-option] test ISBN...
+```
+./cover [config-option] test ISBN...
+```
 
 Cover will print a JSON representation of the cover URLs for the specified
 ISBNs, in the same format as it would return to Koha when running as a server.
@@ -81,7 +91,9 @@ ISBNs, in the same format as it would return to Koha when running as a server.
 
 To save the cover image for an ISBN to a file, use this:
 
-    ./cover save ISBN filename
+```
+./cover save ISBN filename
+```
 
 If `filename` already exists, it will not be overwritten.
 
@@ -89,7 +101,9 @@ If `filename` already exists, it will not be overwritten.
 
 To run as a server to be used by Koha, use this:
 
-    ./cover [config-option] server
+```
+./cover [config-option] server
+````
 
 The server will run until terminated by a Control-C or other signal.
 
@@ -97,15 +111,19 @@ The server will run until terminated by a Control-C or other signal.
 
 In another window, try this command (without the newline)
 
-    curl 'http://localhost:8090/cover?id=1594485356,0451526538,
-    0735219869,0891343962&provider=gb'
+```
+curl 'http://localhost:8090/cover?id=1594485356,0451526538,
+   0735219869,0891343962&provider=gb'
+```
 
 This should print something like this (with no newlines, and `...` replaced with actual URLs):
 
-    {"1594485356":"https://books.google.com/books/...",
-     "0451526538":"https://books.google.com/books/...",
-     "0735219869":"https://books.google.com/books/...",
-     "0891343962":"https://books.google.com/books/..."}
+```
+{"1594485356":"https://books.google.com/books/...",
+ "0451526538":"https://books.google.com/books/...",
+ "0735219869":"https://books.google.com/books/...",
+ "0891343962":"https://books.google.com/books/..."}
+```
 
 To include OpenLibrary in the request, add `,ol` to the end of the request URL.
 
@@ -137,7 +155,9 @@ problem, so the workaround is to create a cron job that restarts Cover
 on a daily basis.  As root, use the command `crontab -e`, and when the
 editor comes up, add the following line to the bottom of the crontab:
 
-    0 5    *   *   *     /bin/systemctl restart cover
+```
+0 5    *   *   *     /bin/systemctl restart cover
+```
 
 This will restart Cover at 5 AM every day.
 
@@ -156,8 +176,10 @@ On a ThinkPad X201s (a first-generation Core i7 processor), I ran the command
 listed above under "Server testing", in order to get all four of the URLs into the cache.
 Then I ran a benchmark on the server using this command (without the newline):
 
-    ab -n 10000 -c 50 'http://localhost:8090/cover?id=1594485356,0451526538,
-    0735219869,0891343962&provider=gb'
+```
+ab -n 10000 -c 50 'http://localhost:8090/cover?id=1594485356,0451526538,
+  0735219869,0891343962&provider=gb'
+```
 
 Here are the results:
 
